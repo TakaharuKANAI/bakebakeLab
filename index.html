@@ -64,6 +64,26 @@
     @keyframes flicker { 0%,100% { opacity: 1; } 50% { opacity: 0.97; } }
     .subtitle { font-size: 14px; color: #00cc70; letter-spacing: 3px; }
 
+    .settings-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,255,136,0.2);
+      border: 2px solid #00ff88;
+      color: #00ff88;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 10000;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+    .settings-btn:hover {
+      background: rgba(0,255,136,0.4);
+      box-shadow: 0 0 15px rgba(0,255,136,0.5);
+    }
+
     .container {
       position: relative; z-index: 2;
       display: grid;
@@ -273,6 +293,7 @@
 </head>
 <body>
   <div class="scanline"></div>
+  <button class="settings-btn" onclick="openSettings()">⚙️ API設定</button>
   
   <div class="container">
     <header>
@@ -423,16 +444,74 @@
   </script>
 
   <script>
+    // ====== API Key管理 ======
+    let GEMINI_API_KEY = localStorage.getItem('gemini_api_key');
+    let IMGBB_API_KEY = localStorage.getItem('imgbb_api_key');
+
+    // 初回起動時の設定
+    if (!GEMINI_API_KEY || !IMGBB_API_KEY) {
+      const setupMessage = '🔑 API Keyの初期設定が必要です\n\n' +
+        '以下の2つのAPIキーを順番に入力してください：\n' +
+        '1. Gemini API Key\n' +
+        '2. ImgBB API Key\n\n' +
+        '（次回から自動で読み込まれます）';
+      
+      alert(setupMessage);
+      
+      if (!GEMINI_API_KEY) {
+        GEMINI_API_KEY = prompt('1/2: Gemini API Keyを入力してください:');
+        if (GEMINI_API_KEY) {
+          localStorage.setItem('gemini_api_key', GEMINI_API_KEY);
+        }
+      }
+      
+      if (!IMGBB_API_KEY) {
+        IMGBB_API_KEY = prompt('2/2: ImgBB API Keyを入力してください:');
+        if (IMGBB_API_KEY) {
+          localStorage.setItem('imgbb_api_key', IMGBB_API_KEY);
+        }
+      }
+      
+      if (GEMINI_API_KEY && IMGBB_API_KEY) {
+        alert('✅ API Keyを保存しました！');
+      } else {
+        alert('⚠️ API Keyが必要です。右上の⚙️ボタンから設定できます。');
+      }
+    }
+
+    // API Key設定画面を開く
+    function openSettings() {
+      const currentGemini = GEMINI_API_KEY ? '設定済み (****' + GEMINI_API_KEY.slice(-4) + ')' : '未設定';
+      const currentImgBB = IMGBB_API_KEY ? '設定済み (****' + IMGBB_API_KEY.slice(-4) + ')' : '未設定';
+      
+      const message = '📋 現在の設定\n\n' +
+        `Gemini API Key: ${currentGemini}\n` +
+        `ImgBB API Key: ${currentImgBB}\n\n` +
+        'API Keyを再設定しますか？';
+      
+      if (confirm(message)) {
+        const newGemini = prompt('Gemini API Keyを入力してください:', GEMINI_API_KEY || '');
+        if (newGemini) {
+          GEMINI_API_KEY = newGemini;
+          localStorage.setItem('gemini_api_key', newGemini);
+        }
+        
+        const newImgBB = prompt('ImgBB API Keyを入力してください:', IMGBB_API_KEY || '');
+        if (newImgBB) {
+          IMGBB_API_KEY = newImgBB;
+          localStorage.setItem('imgbb_api_key', newImgBB);
+        }
+        
+        alert('✅ API Keyを更新しました！');
+      }
+    }
+
     // ====== グローバル変数 ======
     let uploadedImage = null;
     let generatedImageBase64 = null;
     let currentFidelity = 80;
     let progressValue = 0;
     let progressTimer = null;
-
-    // ダミーAPIキー（実際のキーに書き換えてください）
-    const GEMINI_API_KEY = 'AIzaSyBFeq9h6scdhZb7ag8zQDTUHsdW01_FLjE';
-    const IMGBB_API_KEY = 'e74f883b5de32f7c9d43874afddca963';
 
     // 忠実度の説明
     const fidelityDescriptions = {
@@ -591,6 +670,12 @@
 
     // ====== 召喚処理 ======
     async function summonMonster() {
+      // API Keyチェック
+      if (!GEMINI_API_KEY) {
+        showError('Gemini API Keyが設定されていません。⚙️ボタンから設定してください。');
+        return;
+      }
+
       if (!uploadedImage) return showError('原料画像を投入してください');
 
       document.getElementById('summonBtn').disabled = true;
@@ -751,6 +836,12 @@
 
     // ====== 保存処理（ImgBB + Firebase） ======
     async function saveToCloud() {
+      // API Keyチェック
+      if (!IMGBB_API_KEY) {
+        showError('ImgBB API Keyが設定されていません。⚙️ボタンから設定してください。');
+        return;
+      }
+
       if (!generatedImageBase64) return showError('保存する画像がありません。先に召喚してください。');
       if (!window.firebaseDB) return showError('Firebaseに接続されていません。設定を確認してください。');
 
